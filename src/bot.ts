@@ -25,7 +25,11 @@ class PvPBot {
     this.lookAtTargetHead();
     this.updateIfInRange();
     if (this.hitWhenInRange && this.inRange) this.sprintHit();
-    // if (bot.entity.velocity.y < 0 && didSprintHit) bot.attack(target);
+    if (this.punishCrits && this.checkIfFalling()) {
+      this.bot.setControlState('sprint', false);
+      this.bot.attack(this.target);
+      this.bot.setControlState('sprint', true);
+    }
   }
 
   private start(username: string, message: string) {
@@ -68,13 +72,17 @@ class PvPBot {
 
   private updateIfInRange() {
     const dist = this.target.position.distanceTo(this.bot.entity.position);
-    this.inRange = dist <= 3;
+    this.inRange = dist <= 3.3;
   }
 
   private convertMessageToBoolArgs(message: string) {
     const args = message.split(' ');
     args.shift();
     return args.map((arg) => arg == '1');
+  }
+
+  private checkIfFalling() {
+    return this.bot.entity.velocity.y < -0.13;
   }
 }
 
