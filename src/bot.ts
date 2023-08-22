@@ -8,10 +8,13 @@ class PvPBot {
   private critDeflect: boolean;
   private punishCrits: boolean;
   private walkForward: boolean;
+  private strafing: boolean;
   private currentHealth: number;
   private inRange: boolean;
-  private ticksTilAttack: number = 0;
+  private ticksTilAttack: number;
   private swordAttackCoolDown: number;
+  private ticksAfterLastStrafe: number;
+  private isRight: boolean = true;
 
   constructor(bot: Bot) {
     this.thisBinder();
@@ -44,18 +47,31 @@ class PvPBot {
       this.bot.setControlState('sprint', true);
       this.ticksTilAttack = this.swordAttackCoolDown;
     }
+    if (this.strafing) {
+      this.ticksAfterLastStrafe++;
+      if (this.shoudlStrafe()) {
+        this.ticksAfterLastStrafe = 0;
+        this.strafeOtherDirection();
+      }
+    }
   }
 
   private start(username: string, message: string) {
     this.swordAttackCoolDown = this.getSwordAttackCoolDown();
+    this.ticksTilAttack = 0;
+    this.ticksAfterLastStrafe = 0;
     this.target = this.bot.players[username].entity;
     [
       this.hitWhenInRange,
       this.critDeflect,
       this.punishCrits,
       this.walkForward,
+      this.strafing,
     ] = this.convertMessageToBoolArgs(message);
-    this.bot.setControlState('forward', true);
+    this.bot.setControlState('right', false);
+    this.bot.setControlState('left', false);
+    if (this.strafing) this.bot.setControlState('right', true);
+    this.bot.setControlState('forward', false);
     if (this.walkForward) this.bot.setControlState('forward', true);
     this.bot.on('physicTick', this.update);
     this.bot.on('health', this.onDamage);
@@ -116,6 +132,26 @@ class PvPBot {
 
   private hasAtttackCooldown() {
     return this.ticksTilAttack <= 0;
+  }
+
+  private shoudlStrafe() {
+    const shouldFastStrafe = Math.random() >= 0.97; // avg 60% to get 1 fast strafe every second (20 ticks)
+    const fastStrafeMultiplier = shouldFastStrafe ? 3 : 1;
+    const strafeChanceNumber = this.ticksAfterLastStrafe * fastStrafeMultiplier;
+    const randomNumberStrafe = Math.floor(Math.random() * 40) + 1;
+    return strafeChanceNumber >= randomNumberStrafe;
+  }
+
+  private strafeOtherDirection() {
+    if (this.isRight) {
+      this.isRight = false;
+      this.bot.setControlState('right', false);
+      this.bot.setControlState('left', true);
+    } else {
+      this.isRight = true;
+      this.bot.setControlState('right', true);
+      this.bot.setControlState('left', false);
+    }
   }
 }
 
