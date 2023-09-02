@@ -15,11 +15,6 @@ function askOptions(): Promise<Options> {
       message: 'Port (default 25565)',
       initial: 25565,
     },
-    {
-      type: 'input',
-      name: 'username',
-      message: 'Username',
-    },
   ]);
 }
 
@@ -33,8 +28,19 @@ async function askSaveOptions(): Promise<Boolean> {
   return saveOptionsObj.save;
 }
 
+function optionsThroughEnviromentVariables(): Options | void {
+  const host = process.env.HOST;
+  const port = parseInt(process.env.PORT);
+  if (!host || !port) return;
+  return {
+    host,
+    port,
+  };
+}
+
 export default async function getOptions(): Promise<Options> {
-  let options = await readOptions();
+  let options = optionsThroughEnviromentVariables();
+  if (!options) options = await readOptions();
   if (!options) {
     options = await askOptions();
     if (await askSaveOptions()) writeOptions(options);

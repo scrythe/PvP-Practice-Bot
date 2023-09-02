@@ -15,6 +15,8 @@ class PvPBot {
   private swordAttackCoolDown: number;
   private ticksAfterLastStrafe: number;
   private isRight: boolean = true;
+  private doCritDeflect: boolean;
+  private ticksTilCritDeflect: number;
 
   constructor(bot: Bot) {
     this.thisBinder();
@@ -29,11 +31,13 @@ class PvPBot {
 
   private update() {
     this.ticksTilAttack--;
+    this.ticksTilCritDeflect--;
     this.lookAtTargetHead();
     this.updateIfInRange();
     if (this.hitWhenInRange && this.inRange && this.hasAtttackCooldown()) {
       this.sprintHit();
       this.ticksTilAttack = this.swordAttackCoolDown;
+      this.randDelayNextHit();
     }
 
     if (
@@ -54,12 +58,23 @@ class PvPBot {
         this.strafeOtherDirection();
       }
     }
+    if (
+      this.critDeflect &&
+      this.doCritDeflect &&
+      this.ticksTilCritDeflect == 0 &&
+      this.inRange &&
+      this.hasAtttackCooldown()
+    ) {
+      this.sprintHit();
+      this.ticksTilAttack = this.swordAttackCoolDown;
+    }
   }
 
   private start(username: string, message: string) {
     this.swordAttackCoolDown = this.getSwordAttackCoolDown();
     this.ticksTilAttack = 0;
     this.ticksAfterLastStrafe = 0;
+    this.doCritDeflect = false;
     this.target = this.bot.players[username].entity;
     [
       this.hitWhenInRange,
@@ -68,8 +83,6 @@ class PvPBot {
       this.walkForward,
       this.strafing,
     ] = this.convertMessageToBoolArgs(message);
-    this.bot.setControlState('right', false);
-    this.bot.setControlState('left', false);
     if (this.strafing) this.bot.setControlState('right', true);
     this.bot.setControlState('forward', false);
     if (this.walkForward) this.bot.setControlState('forward', true);
@@ -80,6 +93,9 @@ class PvPBot {
   private stop() {
     this.bot.off('physicTick', this.update);
     this.bot.off('health', this.onDamage);
+    this.bot.setControlState('forward', false);
+    this.bot.setControlState('right', false);
+    this.bot.setControlState('left', false);
   }
 
   private onDamage() {
@@ -88,10 +104,8 @@ class PvPBot {
       return;
     }
     this.currentHealth = this.bot.health;
-    if (this.critDeflect && this.inRange && this.hasAtttackCooldown()) {
-      this.sprintHit();
-      this.ticksTilAttack = this.swordAttackCoolDown;
-    }
+    this.doCritDeflect = true;
+    this.ticksTilCritDeflect = 4;
   }
 
   private sprintHit() {
@@ -140,6 +154,12 @@ class PvPBot {
     const strafeChanceNumber = this.ticksAfterLastStrafe * fastStrafeMultiplier;
     const randomNumberStrafe = Math.floor(Math.random() * 40) + 1;
     return strafeChanceNumber >= randomNumberStrafe;
+  }
+
+  private randDelayNextHit() {
+    Math.random() >= 0.5;
+    const randTicksDelay = Math.floor(Math.random() * 11) + -2; // rand number -2 til 8
+    this.ticksTilAttack += randTicksDelay;
   }
 
   private strafeOtherDirection() {
